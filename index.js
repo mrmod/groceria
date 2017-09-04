@@ -1,28 +1,65 @@
-const got = require('got')
+const {receive} = require('./luisGrocery')
+const {sendText} = require('./fb')
+const {groceryReactor} = require('./reactors')
 
-const witUrl = 'https://api.wit.ai/message?v=20170904'
-const token = 'Bearer 4AZR2FKGFT7K3RW6U3TPIRTQUAMUPYJM'
+const verifyToken = 'myTokenLiesOverTheOcean'
 
-const utter = (utterance) => got(
-  `${witUrl}&q=${utterance}`,
-  {
-    headers: {
-      'Authorization': token,
-    }
+const receiveText = (req, res) => {
+  if (req.query['hub.verify_token'] === verifyToken) {
+    res.status(200).send(req.query['hub.challenge'])
+    return
   }
-)
-.then(decodeResponse)
-.then(addGrocery)
-.catch((err) => {
-  console.log('ERROR:', utterance, '->', err)
-  throw err
-})
+  // Handle messages
+  if (req.body.entry) {
+    let messages = []
 
+    let entries = req.body.entry.filter((e) => e.messaging)
+    entries.forEach((e) => e.messaging.forEach((msg) => messages.push(msg)))
+    // console.log('Entries', entries)
+    // console.log('Messages:', messages)
+    Promise.all(messages.map(handleFb))
+    .then(() => {
+      console.log('Processed all messages')
+      res.status(200).end()
+    })
+    .catch((err) => {
+      console.log('ERROR: Unable to process messages', err)
+      res.status(500)
+    })
+    return
+  } else {
+    res.status(400).end()
+    return
+  }
 
-const addGrocery = (witResponse) => {
-  console.log('TRACE: ', witResponse)
-  console.log('ENTITIES:', witResponse.entities)
+  res.status(403).end()
 }
-const decodeResponse = (response) => JSON.parse(response.body)
 
-utter('Pick up spinach')
+const hookTest = (req, res) => receive(req.body.message.text)
+.then((payload) => groceryReactor(
+  payload,
+  payload.grocery,
+  'fakeId'
+))
+.then((payload) => res.status(200).send({saying: payload.text}))
+
+const handleFb = (msgHook) => {
+  return receive(msgHook.message.text)
+  // {state: '', text: '', modelAction: ''}
+  .then((payload) => groceryReactor(
+    payload,
+    payload.grocery,
+    msgHook.sender.id
+  ))
+  .then((payload) => sendText(payload.sender, payload.text))
+}
+
+module.exports = {
+  receiveText,
+  hookTest,
+}
+// utter('Pick up granola')
+// .then((wr) => isAddGrocery(wr) ? addGrocery(wr) : pickUp(wr))
+//
+// utter('What should I get from CostCo?')
+// .then((wr) => isAddGrocery(wr) ? addGrocery(wr) : pickUp(wr))
