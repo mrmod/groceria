@@ -1,0 +1,21 @@
+{
+  "name": "groceria",
+  "version": "0.0.1",
+  "description": "Grocery bot",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "eslint": "^4.6.1",
+    "eslint-config-google": "^0.9.1",
+    "jest": "^21.0.1"
+  },
+  "dependencies": {
+    "@google-cloud/datastore": "^1.1.0",
+    "got": "^7.1.0",
+    "twilio": "^3.6.5"
+  }
+}
